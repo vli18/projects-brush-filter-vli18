@@ -50,6 +50,26 @@ private:
     }
 
     // TODO: add any member variables or functions you need
+    // BRUSH:
+    std::vector<RGBA> m_tempColor;
+
+    int currentBrush;
+    RGBA currentColor;
+
+    bool m_isDown;
+
+    int posToIndex(int x, int y);
+
+    float getMaskValue(float distance, int radius);
+    void applyBrush(int x, int y);
+
+    void pickUpSmudge(int x, int y);
+
+    // Extra Credit
+    void sprayBrush(int x, int y);
+    void speedBrush(int x, int y);
+
+    RGBA color(const RGBA &original, const RGBA &brush, float maskValue);
 };
 
 #endif // CANVAS2D_H
