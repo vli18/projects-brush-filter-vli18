@@ -49,7 +49,6 @@ private:
         mouseUp(static_cast<int>(x), static_cast<int>(y));
     }
 
-    // TODO: add any member variables or functions you need
     // BRUSH:
     std::vector<RGBA> m_tempColor;
 
@@ -68,9 +67,7 @@ private:
 
     // Extra Credit
     void sprayBrush(int x, int y);
-
     void fillBucket(int x, int y);
-
     RGBA color(const RGBA &original, const RGBA &brush, float maskValue);
 };
 

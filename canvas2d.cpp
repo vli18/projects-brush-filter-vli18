@@ -227,7 +227,7 @@ void Canvas2D::sprayBrush(int x, int y) {
 }
 
 void Canvas2D::fillBucket(int x, int y) {
-    // get color of canvas at position of the clicked pixel
+    // getting color of canvas at position of the clicked pixel
     RGBA targetColor = m_data[posToIndex(x, y)];
     RGBA fillColor = settings.brushColor;
 
@@ -236,7 +236,7 @@ void Canvas2D::fillBucket(int x, int y) {
         return;
     }
 
-    // queue to store pixels at coordinate
+    // queue to store pixels
     std::queue<std::pair<int, int>> pixelQueue;
     pixelQueue.push({x, y});
 
