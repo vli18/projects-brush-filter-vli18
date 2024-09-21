@@ -22,11 +22,6 @@ https://github.com/BrownCSCI1230/projects_raster_template/assets/77859770/241d99
 
 #### Your Output
 
-<!---
-Paste your output on top of this comment!
--->
-
-
 
 ### Linear Brush
 **Instructions:** Draw with the linear brush.

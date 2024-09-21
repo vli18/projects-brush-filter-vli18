@@ -56,6 +56,7 @@ private:
     int currentBrush;
     RGBA currentColor;
 
+    int m_brushRadius;
     bool m_isDown;
 
     int posToIndex(int x, int y);
@@ -67,7 +68,8 @@ private:
 
     // Extra Credit
     void sprayBrush(int x, int y);
-    void speedBrush(int x, int y);
+
+    void fillBucket(int x, int y);
 
     RGBA color(const RGBA &original, const RGBA &brush, float maskValue);
 };
