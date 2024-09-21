@@ -22,6 +22,7 @@ https://github.com/BrownCSCI1230/projects_raster_template/assets/77859770/241d99
 
 #### Your Output
 
+https://github.com/vli18/projects-brush-vli18/blob/main/videos/constant%20brush.mov
 
 ### Linear Brush
 **Instructions:** Draw with the linear brush.
@@ -32,11 +33,7 @@ https://github.com/BrownCSCI1230/projects_raster_template/assets/77859770/9706fa
 
 #### Your Output
 
-<!---
-Paste your output on top of this comment!
--->
-
-
+https://github.com/vli18/projects-brush-vli18/blob/main/videos/linear%20brush.mov
 
 ### Quadratic Brush
 **Instructions:** Draw with the quadratic brush.
@@ -47,11 +44,7 @@ https://github.com/BrownCSCI1230/projects_raster_template/assets/77859770/c5df5c
 
 #### Your Output
 
-<!---
-Paste your output on top of this comment!
--->
-
-
+https://github.com/vli18/projects-brush-vli18/blob/main/videos/quadratic%20brush.mov
 
 ### Smudge Brush
 **Instructions:** Draw some colors on the canvas and use the smudge brush to smear them together.
@@ -62,10 +55,7 @@ https://github.com/BrownCSCI1230/projects_raster_template/assets/77859770/26440b
 
 #### Your Output
 
-<!---
-Paste your output on top of this comment!
--->
-
+https://github.com/vli18/projects-brush-vli18/blob/main/videos/smudge%20brush.mov
 
 
 ### Smudge Brush Change in Alpha
@@ -77,11 +67,7 @@ https://github.com/BrownCSCI1230/projects_raster_template/assets/77859770/0b49c7
 
 #### Your Output
 
-<!---
-Paste your output on top of this comment!
--->
-
-
+https://github.com/vli18/projects-brush-vli18/blob/main/videos/smudge%20alpha.mov
 
 ### Radius
 **Instructions:** Use any brush with at least 3 different values for the radius.
@@ -92,10 +78,7 @@ https://github.com/BrownCSCI1230/projects_raster_template/assets/77859770/6f619d
 
 #### Your Output
 
-<!---
-Paste your output on top of this comment!
--->
-
+https://github.com/vli18/projects-brush-vli18/blob/main/videos/brush%20radius.mov
 
 
 ### Color
@@ -107,10 +90,7 @@ https://github.com/BrownCSCI1230/projects_raster_template/assets/77859770/fd9578
 
 #### Your Output
 
-<!---
-Paste your output on top of this comment!
--->
-
+https://github.com/vli18/projects-brush-vli18/blob/main/videos/brush%20color.mov
 
 
 ### Canvas Edge Behavior
@@ -122,11 +102,7 @@ https://github.com/BrownCSCI1230/projects_raster_template/assets/77859770/f53442
 
 #### Your Output
 
-<!---
-Paste your output on top of this comment!
--->
-
-
+https://github.com/vli18/projects-brush-vli18/blob/main/videos/canvas%20edge.mov
 
 ### Alpha
 **Instructions:** With the constant brush, draw a single dot of red (255, 0, 0) with an alpha of 255. Then, draw over it with a single dot of blue (0, 0, 255) with an alpha of 100. You should get a purpleish color.
@@ -137,10 +113,7 @@ https://github.com/BrownCSCI1230/projects_raster_template/assets/77859770/b13d31
 
 #### Your Output
 
-<!---
-Paste your output on top of this comment!
--->
-
+https://github.com/vli18/projects-brush-vli18/blob/main/videos/alpha.mov
 
 
 ### Alpha of Zero
@@ -152,18 +125,22 @@ https://github.com/BrownCSCI1230/projects_raster_template/assets/77859770/8e4877
 
 #### Your Output
 
-<!---
-Paste your output on top of this comment!
--->
-
-
+https://github.com/vli18/projects-brush-vli18/blob/main/videos/alpha%20zero.mov
 
 ## Design Choices
+I grouped my different brush mask implementations into one function applyBrush() which uses the brush type
+to calculate different mask values. The color function determines the final color result of the brush given
+its desired RGBA values. Smudge brush also requires a pick up color function that updates the temporary data
+for the brush. Spray brush uses random values to generate the spray effect within a radius value with desired
+spray density. Fill bucket uses a queue to store pixel information and checks for neighboring pixels to determine
+the fill area and retrieve and apply color information. 
 
 ## Collaboration/References
+ChatGPT was used in helping with the color blending code and some debugging for the brush masks.
 
 ## Known Bugs
 
 ## Extra Credit
-
-
+I implemented the Spray Brush and Fill Bucket as my 8 points of extra credit for CSCI1234. 
+1. The code for Spray Brush can be found in sprayBrush() and is called in the mouseDown and mouseUp functions
+2. The code for Fill Bucket can be found in fillBucket() and is called in the mouseDown function
