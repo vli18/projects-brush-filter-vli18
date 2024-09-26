@@ -94,11 +94,331 @@ void Canvas2D::resize(int w, int h) {
 }
 
 /**
+ * FILTER FUNCTIONALITY
+ */
+
+
+// Ensures the value lies within [0, 255]
+inline std::uint8_t clamp(float x) {
+    if (x < 0.0f) return 0;
+    if (x > 255.0f) return 255;
+    return static_cast<uint8_t>(std::min(std::max(round(x), 0.0f), 255.0f));
+}
+
+// Repeats the pixel on the edge of the image such that A,B,C,D looks like ...A,A,A,B,C,D,D,D...
+RGBA getPixelRepeated(std::vector<RGBA> &data, int width, int height, int x, int y) {
+    int newX = (x < 0) ? 0 : std::min(x, width  - 1);
+    int newY = (y < 0) ? 0 : std::min(y, height - 1);
+    return data[width * newY + newX];
+}
+
+// assumes the input kernel is square, and has an odd-numbered side length
+std::vector<RGBA> Canvas2D::convolve2D(std::vector<float> kernel) {
+    // initialize a vector, called `result`, to temporarily store your output image data
+    std::vector<RGBA> result(m_data.size(), RGBA{0, 0, 0, 255});
+
+    int kernelLen = sqrt(kernel.size());
+    int kernelOffset = kernelLen / 2;
+
+    for (int r = 0; r < m_height; r++) {
+        for (int c = 0; c < m_width; c++) {
+            size_t centerIndex = r * m_width + c;
+
+            // initialize redAcc, greenAcc, and blueAcc float variables
+            float redAcc = 0.0f;
+            float greenAcc = 0.0f;
+            float blueAcc = 0.0f;
+
+            // iterate over the kernel using its dimension
+            for (int kr = 0; kr < kernelLen; kr++) {
+                for (int kc = 0; kc < kernelLen; kc++) {
+                    int index = kr * kernelLen + kc;
+                    float weight = kernel[index];
+
+                    int offsetX = kc - kernelOffset;
+                    int offsetY = kr - kernelOffset;
+
+                    RGBA pixel = getPixelRepeated(m_data, m_width, m_height, c + offsetX, r + offsetY);
+
+                    redAcc += weight * pixel.r;
+                    greenAcc += weight * pixel.g;
+                    blueAcc += weight * pixel.b;
+                }
+            }
+
+            // update buffer with the new RGBA pixel value created from redAcc, greenAcc, and blueAcc
+            result[centerIndex].r = clamp(redAcc);
+            result[centerIndex].g = clamp(greenAcc);
+            result[centerIndex].b = clamp(blueAcc);
+        }
+    }
+
+    return result;
+}
+
+void Canvas2D::filterBlur() {
+    int r = settings.blurRadius;
+
+    if (r == 0) {
+        //identity filter
+        return;
+    }
+
+    float stddev = r / 3.0;
+    int kernelSize = 2 * r + 1;
+    std::vector<float> kernel(kernelSize * kernelSize); //initiate 2D kernel
+
+    double sum = 0;
+    for (int i = 0; i < kernelSize; i++) {
+        for (int j = 0; j < kernelSize; j++) {
+            int dx = i - r;  // horizontal offset from the center
+            int dy = j - r;  // vertical offset from the center
+            double distance = std::sqrt(dx * dx + dy * dy);  // Euclidean distance
+
+            double value = (1 / (std::sqrt(2 * M_PI * pow(stddev, 2)))) *
+                           std::exp(-(pow(distance, 2) / (2 * pow(stddev, 2))));
+
+            int index = i * kernelSize + j;
+            kernel[index] = value;
+            sum += value;
+        }
+    }
+
+    // normalize kernel
+    for (int i = 0; i < kernel.size(); i++) {
+        kernel[i] /= sum;
+    }
+
+    std::vector<RGBA> output = convolve2D(kernel);
+
+    // copy the RGBA data from `output' to `m_data`
+    for (size_t i = 0; i < m_data.size(); i++) {
+        m_data[i] = output[i];
+    }
+}
+
+std::uint8_t rgbaToGray(const RGBA &pixel) {
+    std::uint8_t grayValue = static_cast<std::uint8_t>(0.299 * pixel.r + 0.587 * pixel.g + 0.114 * pixel.b);
+    return clamp(grayValue);
+}
+
+void Canvas2D::filterGray() {
+    for (int row = 0; row < m_height; ++row) {
+        for (int col = 0; col < m_width; ++col) {
+            size_t currentIndex = m_width * row + col;
+            RGBA &currentPixel = m_data[currentIndex];
+
+            // call rgbaToGray()
+            std::uint8_t resultGray = rgbaToGray(currentPixel);
+            // update currentPixel's color
+            currentPixel.r = resultGray;
+            currentPixel.g = resultGray;
+            currentPixel.b = resultGray;
+        }
+    }
+}
+
+void Canvas2D::filterEdgeDetect() {
+    //convert image to grayscale
+    filterGray();
+
+    //sobel filters
+    std::vector<float> sobelX = {
+        -1.0f,    0,    1.0f,
+        -2.0f,    0,    2.0f,
+        -1.0f,    0,    1.0f
+    };
+
+    std::vector<float> sobelY = {
+        -1.0f, -2.0f,  -1.0f,
+        0,     0,     0,
+        1.0f,   2.0f,   1.0f
+    };
+
+    std::vector<RGBA> G_x = convolve2D(sobelX);
+    std::vector<RGBA> G_y = convolve2D(sobelY);
+
+    // approximate magnitude of the gradient of image
+    for (size_t i = 0; i < m_data.size(); i++) {
+        float gradient_x = static_cast<float>(rgbaToGray(G_x[i]));
+        float gradient_y = static_cast<float>(rgbaToGray(G_y[i]));
+
+        float G_mag = std::sqrt(gradient_x * gradient_x + gradient_y * gradient_y);
+        G_mag *= settings.edgeDetectSensitivity; //multiply by sensitivity parameter
+        uint8_t clampedValue = clamp(G_mag);
+
+        m_data[i].r = clampedValue;
+        m_data[i].g = clampedValue;
+        m_data[i].b = clampedValue;
+    }
+}
+
+std::vector<float> triangleKernel(float support) {
+    int size = static_cast<int>(2 * support + 1);
+    std::vector<float> kernel(size);
+    float sum = 0.0f;
+
+    for (int i = 0; i < size; i++) {
+        float distance = std::fabs(i - support);
+        kernel[i] = 1.0f - distance / support;
+        sum += kernel[i];
+    }
+
+    // normalize kernel
+    for (int i = 0; i < size; i++) {
+        kernel[i] /= sum;
+    }
+
+    return kernel;
+}
+
+std::vector<RGBA> Canvas2D::convolve1DHorizontal(std::vector<float> &kernel, std::vector<RGBA> &input) {
+    std::vector<RGBA> output(input.size(), RGBA{0, 0, 0, 255});
+    int kernelOffset = kernel.size() / 2;
+
+    for (int r = 0; r < m_height; r++) {
+        for (int c = 0; c < m_width; c++) {
+            float redAcc = 0.0f;
+            float greenAcc = 0.0f;
+            float blueAcc = 0.0f;
+
+            for (int k = -kernelOffset; k <= kernelOffset; k++) {
+                int colIndex = c + k;
+
+                if (colIndex < 0 || colIndex >= m_width) {
+                    continue;
+                }
+
+                int pixelIndex = r * m_width + colIndex;
+                RGBA pixel = input[pixelIndex];
+
+                redAcc += kernel[k + kernelOffset] * pixel.r;
+                greenAcc += kernel[k + kernelOffset] * pixel.g;
+                blueAcc += kernel[k + kernelOffset] * pixel.b;
+            }
+
+            size_t index = r * m_width + c;
+            output[index].r = clamp(redAcc);
+            output[index].g = clamp(greenAcc);
+            output[index].b = clamp(blueAcc);
+        }
+    }
+
+    return output;
+}
+
+std::vector<RGBA> Canvas2D::convolve1DVertical(std::vector<float> &kernel, std::vector<RGBA> &input) {
+    std::vector<RGBA> output(input.size(), RGBA{0, 0, 0, 255});
+    int kernelOffset = kernel.size() / 2;
+
+    for (int r = 0; r < m_height; r++) {
+        for (int c = 0; c < m_width; c++) {
+            float redAcc = 0.0f;
+            float greenAcc = 0.0f;
+            float blueAcc = 0.0f;
+
+            for (int k = -kernelOffset; k <= kernelOffset; k++) {
+                int rowIndex = r + k;
+
+                if (rowIndex < 0 || rowIndex >= m_height) {
+                    continue;
+                }
+
+                int pixelIndex = rowIndex * m_width + c;
+                RGBA pixel = input[pixelIndex];
+
+                redAcc += kernel[k + kernelOffset] * pixel.r;
+                greenAcc += kernel[k + kernelOffset] * pixel.g;
+                blueAcc += kernel[k + kernelOffset] * pixel.b;
+            }
+
+            size_t index = r * m_width + c;
+            output[index].r = clamp(redAcc);
+            output[index].g = clamp(greenAcc);
+            output[index].b = clamp(blueAcc);
+        }
+    }
+
+    return output;
+}
+
+void Canvas2D::filterScale() {
+    float scaleX = settings.scaleX;
+    float scaleY = settings.scaleY;
+
+    float supportX;
+    float supportY;
+
+    // scale x support
+    if (scaleX >= 1) { // upscale
+        supportX = 2.0f;
+    } else { // downscale
+        supportX = 2.0f / scaleX;
+    }
+
+    // scale y support
+    if (scaleY >= 1) { // upscale
+        supportY = 2.0f;
+    } else { // downscale
+        supportY = 2.0f / scaleY;
+    }
+
+    std::vector<float> kernelX = triangleKernel(supportX);
+    std::vector<float> kernelY = triangleKernel(supportY);
+
+    // horizontal pass
+    std::vector<RGBA> pass1Data = convolve1DHorizontal(kernelX, m_data);
+
+    // vertical pass
+    std::vector<RGBA> filteredData = convolve1DVertical(kernelY, pass1Data);
+
+    // resample
+    int newWidth = round(m_width * scaleX);
+    int newHeight = round(m_height * scaleY);
+    std::vector<RGBA> scaledData(newWidth * newHeight);
+
+    for (int r = 0; r < newHeight; r++) {
+        for (int c = 0; c < newWidth; c++) {
+            float originalX = c / scaleX;
+            float originalY = r / scaleY;
+
+            RGBA pixel = getPixelRepeated(filteredData, m_width, m_height, round(originalX), round(originalY));
+
+            int index = r * newWidth + c;
+            scaledData[index] = pixel;
+        }
+    }
+
+    // update canvas
+    m_data = scaledData;
+    m_width = newWidth;
+    m_height = newHeight;
+}
+
+/**
  * @brief Called when the filter button is pressed in the UI
  */
 void Canvas2D::filterImage() {
-    // Filter TODO: apply the currently selected filter to the loaded image
+    switch (settings.filterType) {
+    case FILTER_BLUR:
+        filterBlur();
+        break;
+    case FILTER_EDGE_DETECT:
+        filterEdgeDetect();
+        break;
+    case FILTER_SCALE:
+        filterScale();
+        break;
+    default:
+        break;
+    }
+
+    displayImage();
 }
+
+/**
+ * BRUSH FUNCTIONALITY
+ */
 
 /**
  * @brief Called when any of the parameters in the UI are modified.

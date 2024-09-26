@@ -69,6 +69,24 @@ private:
     void sprayBrush(int x, int y);
     void fillBucket(int x, int y);
     RGBA color(const RGBA &original, const RGBA &brush, float maskValue);
+
+    // FILTER:
+    int currFilterType;
+    int currBlurRadius;
+    int currSensitivity;
+
+    RGBA bilinearInterpolation(float x, float y, std::vector<RGBA>& data, int width, int height);
+
+    std::vector<RGBA> convolve2D(std::vector<float> kernel);
+    std::vector<RGBA> convolve1DHorizontal(std::vector<float> &kernel, std::vector<RGBA> &input);
+    std::vector<RGBA> convolve1DVertical(std::vector<float> &kernel, std::vector<RGBA> &input);
+
+    void filterBlur();
+    void filterGray();
+    void filterEdgeDetect();
+    void filterScale();
+
+    // Extra Credit
 };
 
 #endif // CANVAS2D_H
