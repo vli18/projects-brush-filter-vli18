@@ -160,28 +160,22 @@ void Canvas2D::filterBlur() {
     int r = settings.blurRadius;
 
     if (r == 0) {
-        //identity filter
+        // identity filter
         return;
     }
 
     float stddev = r / 3.0;
     int kernelSize = 2 * r + 1;
-    std::vector<float> kernel(kernelSize * kernelSize); //initiate 2D kernel
+    std::vector<float> kernel(kernelSize); // initiate 1D kernel
 
-    double sum = 0;
+    double sum = 0.0;
     for (int i = 0; i < kernelSize; i++) {
-        for (int j = 0; j < kernelSize; j++) {
-            int dx = i - r;  // horizontal offset from the center
-            int dy = j - r;  // vertical offset from the center
-            double distance = std::sqrt(dx * dx + dy * dy);  // Euclidean distance
+        int dx = i - r;  // offset from the center
+        double value = (1 / (std::sqrt(2 * M_PI * pow(stddev, 2)))) *
+                       std::exp(-(pow(dx, 2) / (2 * pow(stddev, 2))));
 
-            double value = (1 / (std::sqrt(2 * M_PI * pow(stddev, 2)))) *
-                           std::exp(-(pow(distance, 2) / (2 * pow(stddev, 2))));
-
-            int index = i * kernelSize + j;
-            kernel[index] = value;
-            sum += value;
-        }
+        kernel[i] = value;
+        sum += value;
     }
 
     // normalize kernel
@@ -189,11 +183,15 @@ void Canvas2D::filterBlur() {
         kernel[i] /= sum;
     }
 
-    std::vector<RGBA> output = convolve2D(kernel);
+    // horizontal pass
+    std::vector<RGBA> pass1Data = convolve1DHorizontal(kernel, m_data);
 
-    // copy the RGBA data from `output' to `m_data`
+    // vertical pass
+    std::vector<RGBA> filteredData = convolve1DVertical(kernel, pass1Data);
+
+    // copy the RGBA data from `filteredData` to `m_data`
     for (size_t i = 0; i < m_data.size(); i++) {
-        m_data[i] = output[i];
+        m_data[i] = filteredData[i];
     }
 }
 
@@ -222,21 +220,20 @@ void Canvas2D::filterEdgeDetect() {
     //convert image to grayscale
     filterGray();
 
-    //sobel filters
-    std::vector<float> sobelX = {
-        -1.0f,    0,    1.0f,
-        -2.0f,    0,    2.0f,
-        -1.0f,    0,    1.0f
-    };
+    // separable sobel kernels
+    std::vector<float> sobelXHorizontal = {-1.0f, 0.0f, 1.0f};
+    std::vector<float> sobelXVertical = {1.0f, 2.0f, 1.0f};
 
-    std::vector<float> sobelY = {
-        -1.0f, -2.0f,  -1.0f,
-        0,     0,     0,
-        1.0f,   2.0f,   1.0f
-    };
+    std::vector<float> sobelYHorizontal = {1.0f, 2.0f, 1.0f};
+    std::vector<float> sobelYVertical = {-1.0f, 0.0f, 1.0f};
 
-    std::vector<RGBA> G_x = convolve2D(sobelX);
-    std::vector<RGBA> G_y = convolve2D(sobelY);
+    // compute gradient in x direction
+    std::vector<RGBA> G_xPass1 = convolve1DHorizontal(sobelXHorizontal, m_data);
+    std::vector<RGBA> G_x = convolve1DVertical(sobelXVertical, G_xPass1);
+
+    // compute gradient in y direction
+    std::vector<RGBA> G_yPass1 = convolve1DHorizontal(sobelYHorizontal, m_data);
+    std::vector<RGBA> G_y = convolve1DVertical(sobelYVertical, G_yPass1);
 
     // approximate magnitude of the gradient of image
     for (size_t i = 0; i < m_data.size(); i++) {
@@ -363,8 +360,18 @@ void Canvas2D::filterScale() {
         supportY = 2.0f / scaleY;
     }
 
+    // normalize triangle kernels
     std::vector<float> kernelX = triangleKernel(supportX);
+    float sumX = std::accumulate(kernelX.begin(), kernelX.end(), 0.0f);
+    for (auto &value : kernelX) {
+        value /= sumX;
+    }
+
     std::vector<float> kernelY = triangleKernel(supportY);
+    float sumY = std::accumulate(kernelY.begin(), kernelY.end(), 0.0f);
+    for (auto &value : kernelY) {
+        value /= sumY;
+    }
 
     // horizontal pass
     std::vector<RGBA> pass1Data = convolve1DHorizontal(kernelX, m_data);
